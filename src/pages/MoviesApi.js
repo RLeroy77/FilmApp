@@ -1,55 +1,41 @@
-import React, { useEffect, useState } from "react";
-import { Card, Button, Row, Col, Spinner } from "react-bootstrap";
+import React, { useState, useEffect } from "react";
+import { Card, Button, Row, Col } from "react-bootstrap";
+import { fetchTrendingMovies } from "../utils/tmdb";
 import { useWishlistContext } from "../context/WishlistContext";
-import { fetchTrendingMovies } from "../utils/tmdb"; 
 
 const MoviesApi = () => {
-  const [movies, setMovies] = useState([]); 
-  const [loading, setLoading] = useState(true); 
-  const [currentPage, setCurrentPage] = useState(1); 
-  const [totalPages, setTotalPages] = useState(1); 
-  const { wishlist, addToWishlist } = useWishlistContext();
+  const [movies, setMovies] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const { addToWishlist } = useWishlistContext();
 
   useEffect(() => {
-    const getMovies = async () => {
-      setLoading(true);
-      const data = await fetchTrendingMovies(currentPage);
-      setMovies(data.results); 
-      setTotalPages(data.total_pages); 
-      setLoading(false);
+    const fetchMovies = async () => {
+      try {
+        const movieData = await fetchTrendingMovies(currentPage);
+        if (Array.isArray(movieData)) {
+          setMovies(movieData);
+        } else {
+          console.error("Données de films incorrectes :", movieData);
+          setMovies([]);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des films :", error);
+        setMovies([]);
+      }
     };
-
-    getMovies();
-  }, [currentPage]); 
-
-  if (loading) {
-    return (
-      <div className="d-flex justify-content-center mt-5">
-        <Spinner animation="border" variant="primary" />
-      </div>
-    );
-  }
-
-  if (movies.length === 0) {
-    return <p>Aucun film disponible.</p>;
-  }
-
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-  };
+    fetchMovies();
+  }, [currentPage]);
 
   return (
-    <div className="container">
-      <h1 className="my-4 text-center">Films Populaires</h1>
+    <div className="container mt-4">
+      <h1 className="mb-4 text-center" style={{ color: "#1d3557" }}>
+        Films Populaires
+      </h1>
       <Row>
-        {movies.map((movie) => {
-          const isInWishlist = wishlist.some((item) => item.id === movie.id);
-
-          return (
+        {Array.isArray(movies) && movies.length > 0 ? (
+          movies.map((movie) => (
             <Col key={movie.id} sm={12} md={6} lg={4} xl={3} className="mb-4">
-              <Card className="h-100 d-flex flex-column">
+              <Card className="h-100 shadow-lg rounded">
                 <Card.Img
                   variant="top"
                   src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
@@ -58,46 +44,40 @@ const MoviesApi = () => {
                 />
                 <Card.Body className="d-flex flex-column">
                   <Card.Title>{movie.title}</Card.Title>
-                  <Card.Text>{movie.overview}</Card.Text>
-
+                  <Card.Text>{movie.overview.slice(0, 100)}...</Card.Text>
                   <div className="mt-auto">
-                    <div className="mb-2">
+                    <p>
                       <strong>Date de sortie:</strong> {movie.release_date}
-                    </div>
-                    <div className="mb-3">
+                    </p>
+                    <p>
                       <strong>Note:</strong> {movie.vote_average} / 10
-                    </div>
-
+                    </p>
                     <Button
                       variant="primary"
                       onClick={() => addToWishlist(movie)}
-                      disabled={isInWishlist}
+                      className="w-100"
                     >
-                      {isInWishlist
-                        ? "Déjà dans la wishlist"
-                        : "Ajouter à la wishlist"}
+                      Ajouter à la Wishlist
                     </Button>
                   </div>
                 </Card.Body>
               </Card>
             </Col>
-          );
-        })}
+          ))
+        ) : (
+          <p>Aucun film disponible pour le moment.</p>
+        )}
       </Row>
-
-      <div className="d-flex justify-content-center mt-4">
+      <div className="d-flex justify-content-between">
         <Button
           variant="secondary"
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
+          onClick={() => setCurrentPage(currentPage - 1)}
         >
           Précédent
         </Button>
         <Button
           variant="secondary"
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="ms-2"
+          onClick={() => setCurrentPage(currentPage + 1)}
         >
           Suivant
         </Button>
